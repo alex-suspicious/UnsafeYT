@@ -1,0 +1,25 @@
+{
+  "manifest_version": 2,
+  "version": "1.0.0",
+
+  "name": "UnsafeYT",
+  "description": "Decrypt unsafe videos",
+
+  "content_scripts": [{
+    "matches": ["https://www.youtube.com/*", "http://0.0.0.0:2000/*"],
+    "js": ["jquery.js", "background.js"]
+  }],
+  
+  "web_accessible_resources": [
+    "injected.js",
+    "shaders/screen.frag",
+    "shaders/screen.vrt",
+    "textures/inv_offset_map.png",
+    "textures/offset_map.png"
+  ],
+
+  "browser_action": {
+    "default_popup": "index.html"
+  },
+  "permissions": ["tabs"]
+}
