@@ -257,6 +257,7 @@ function getToken() {
       const shuffleImage = new Image();
       shuffleImage.crossOrigin = "anonymous";
       
+
       const actualSeedTokenFromPython = getToken();
       console.log("Video token:" + actualSeedTokenFromPython);
       
@@ -334,11 +335,6 @@ function getToken() {
   if (!video) {
     console.error('Video element with class "video-stream" not found.');
     return;
-  }
-
-  const vol = document.querySelector(".ytp-volume-area");
-  if (vol) {
-    vol.style.display = "none";
   }
 
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
