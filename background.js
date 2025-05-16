@@ -133,7 +133,7 @@ function getToken() {
     .textContent.split("token:");
   if (parts.length > 1) {
     parts = parts[1].split("\n");
-    if (parts.length > 1) return parts[0];
+    if (parts.length > 0) return parts[0];
   }
 
   return "0";
