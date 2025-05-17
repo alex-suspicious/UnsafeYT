@@ -445,7 +445,7 @@ let spawned = false;
 const callback = (mutationsList) => {
   for (const mutation of mutationsList) {
     for (const node of mutation.addedNodes) {
-      if (node.matches && node.matches('.yt-core-attributed-string--link-inherit-color')) {
+      if (node.matches && node.matches('.ytd-comments')) {
         if( !spawned ){
           spawned = true;
           replaceAll();
