@@ -139,7 +139,7 @@ function getToken() {
   return "0";
 }
 
-(function () {
+function replaceVideo() {
   const video = document.getElementsByClassName("video-stream")[0];
   const html5_video_container = document.getElementsByClassName(
     "html5-video-container"
@@ -328,9 +328,9 @@ function getToken() {
       render();
       console.log("Decrypter with shuffle texture initialized");
     });
-})();
+}
 
-(async () => {
+async function replaceSound(){
   const video = document.querySelector(".video-stream");
   if (!video) {
     console.error('Video element with class "video-stream" not found.');
@@ -429,7 +429,35 @@ function getToken() {
     });
   }
 
+  video.pause();
+  video.play();
   console.log(
     "Script loaded. Waiting for video playback to initialize audio graph."
   );
-})();
+}
+
+async function replaceAll(){
+  await replaceSound();
+  replaceVideo();
+}
+
+let spawned = false;
+const callback = (mutationsList) => {
+  for (const mutation of mutationsList) {
+    for (const node of mutation.addedNodes) {
+      if (node.matches && node.matches('.yt-core-attributed-string--link-inherit-color')) {
+        if( !spawned ){
+          spawned = true;
+          replaceAll();
+          console.log('Element spawned:', node);
+        }
+      }
+    }
+  }
+};
+
+const observer = new MutationObserver(callback);
+observer.observe(document.body, {
+  childList: true,
+  subtree: true
+});
