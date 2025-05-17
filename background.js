@@ -125,7 +125,8 @@ function generateUnshuffleOffsetMapDataURLFromSeed(seedToken, width, height) {
 }
 
 
-var isExtensionOn = true;
+let isExtensionOn = true;
+let token = "";
 
 function getToken() {
   let parts = document
@@ -133,7 +134,8 @@ function getToken() {
     .textContent.split("token:");
   if (parts.length > 1) {
     parts = parts[1].split("\n");
-    if (parts.length > 0) return parts[0];
+    if (parts.length > 0)
+      return parts[0];      
   }
 
   return "0";
@@ -258,7 +260,7 @@ function replaceVideo() {
       shuffleImage.crossOrigin = "anonymous";
       
 
-      const actualSeedTokenFromPython = getToken();
+      const actualSeedTokenFromPython = token;
       console.log("Video token:" + actualSeedTokenFromPython);
       
       const actualWidthFromPython = 80;
@@ -437,6 +439,10 @@ async function replaceSound(){
 }
 
 async function replaceAll(){
+  token = getToken();
+  if( token.length < 3 )
+    return;
+
   await replaceSound();
   replaceVideo();
 }
