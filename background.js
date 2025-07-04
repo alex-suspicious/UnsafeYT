@@ -24,94 +24,56 @@ function deterministicHash(s, prime = 31, modulus = Math.pow(2, 32)) {
     return h / modulus;
 }
 
-function _generateUnshuffleOffsetMapRawBytes(seedToken, width, height) {
+function _generateUnshuffleOffsetMapFloat32Array(seedToken, width, height) {
     if (width <= 0 || height <= 0) {
         throw new Error("Width and height must be positive integers.");
     }
     if (typeof seedToken !== 'string' || seedToken.length === 0) {
         throw new Error("Seed string is required for deterministic generation.");
     }
+  
     const totalPixels = width * height;
+    
     const startHash = deterministicHash(seedToken, 31, Math.pow(2, 32) - 1);
     const stepSeed = seedToken + "_step";
     const stepHash = deterministicHash(stepSeed, 37, Math.pow(2, 32) - 2);
+  
     const startAngle = startHash * Math.PI * 2.0;
     const angleIncrement = stepHash * Math.PI / Math.max(width, height);
+  
     const indexedValues = [];
     for (let i = 0; i < totalPixels; i++) {
         const value = Math.sin(startAngle + i * angleIncrement);
         indexedValues.push({ value: value, index: i });
     }
     indexedValues.sort((a, b) => a.value - b.value);
+  
     const pLinearized = new Array(totalPixels);
     for (let k = 0; k < totalPixels; k++) {
         const originalIndex = indexedValues[k].index;
         const shuffledIndex = k;
         pLinearized[originalIndex] = shuffledIndex;
     }
-    const offsetMapBytes = new Uint8Array(totalPixels * 3);
+  
+    const offsetMapFloats = new Float32Array(totalPixels * 2);
+  
     for (let oy = 0; oy < height; oy++) {
         for (let ox = 0; ox < width; ox++) {
             const originalLinearIndex = oy * width + ox;
             const shuffledLinearIndex = pLinearized[originalLinearIndex];
+  
             const sy_shuffled = Math.floor(shuffledLinearIndex / width);
             const sx_shuffled = shuffledLinearIndex % width;
+  
             const offsetX = (sx_shuffled - ox) / width;
             const offsetY = (sy_shuffled - oy) / height;
-            const r_val = Math.max(0, Math.min(255, Math.trunc(((offsetX + 1.0) / 2.0) * 255.0)));
-            const g_val = Math.max(0, Math.min(255, Math.trunc(((offsetY + 1.0) / 2.0) * 255.0)));
-            const b_val = 0;
-            const pixelIndex = (oy * width + ox) * 3;
-            offsetMapBytes[pixelIndex] = r_val;
-            offsetMapBytes[pixelIndex + 1] = g_val;
-            offsetMapBytes[pixelIndex + 2] = b_val;
+  
+            const pixelDataIndex = (oy * width + ox) * 2;
+            offsetMapFloats[pixelDataIndex] = offsetX;
+            offsetMapFloats[pixelDataIndex + 1] = offsetY;
         }
     }
-    return offsetMapBytes;
-}
-
-function generateUnshuffleOffsetMapDataURLFromSeed(seedToken, width, height) {
-    if (width <= 0 || height <= 0) {
-        throw new Error("Width and height must be positive integers.");
-    }
-    if (typeof seedToken !== 'string' || seedToken.length === 0) {
-        throw new Error("Seed string is required.");
-    }
-    if (typeof document === 'undefined') {
-        throw new Error("DOM environment not available. Cannot create canvas.");
-    }
-    const rawOffsetMapBytes = _generateUnshuffleOffsetMapRawBytes(seedToken, width, height);
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) {
-        throw new Error("Could not get 2D rendering context for temporary canvas.");
-    }
-    const imageData = ctx.createImageData(width, height);
-    const pixelData = imageData.data;
-    let sourceByteIndex = 0;
-    let destByteIndex = 0;
-    const totalRgbBytes = width * height * 3;
-    const totalRgbaBytes = width * height * 4;
-    if (pixelData.length !== totalRgbaBytes) {
-        console.error(`ImageData length mismatch. Expected ${totalRgbaBytes}, got ${pixelData.length}`);
-        throw new Error("Internal error: ImageData buffer size mismatch.");
-    }
-    while (sourceByteIndex < totalRgbBytes) {
-        pixelData[destByteIndex++] = rawOffsetMapBytes[sourceByteIndex++];
-        pixelData[destByteIndex++] = rawOffsetMapBytes[sourceByteIndex++];
-        pixelData[destByteIndex++] = rawOffsetMapBytes[sourceByteIndex++];
-        pixelData[destByteIndex++] = 255;
-    }
-    ctx.putImageData(imageData, 0, 0);
-    try {
-        const dataUrl = canvas.toDataURL('image/png');
-        return dataUrl;
-    } catch (e) {
-        console.error("Error during canvas.toDataURL:", e);
-        throw new Error("Failed to get Data URL from canvas: " + e.message);
-    }
+    return offsetMapFloats;
 }
 
 function removeEffects() {
@@ -242,14 +204,22 @@ async function applyEffects(seedToken) {
     html5_video_container.appendChild(activeCanvas);
 
     activeGl =
-        activeCanvas.getContext("webgl", { alpha: false }) ||
-        activeCanvas.getContext("experimental-webgl", { alpha: false });
+        activeCanvas.getContext("webgl2", { alpha: false }) ||
+        activeCanvas.getContext("webgl", { alpha: false });
     if (!activeGl) {
         console.error("WebGL not supported");
         removeEffects();
         return;
     }
 
+    let oesTextureFloatExt = null;
+    if (activeGl instanceof WebGLRenderingContext) {
+        oesTextureFloatExt = activeGl.getExtension('OES_texture_float');
+        if (!oesTextureFloatExt) {
+            console.warn('OES_texture_float extension not available. Float textures for shuffle map might not work.');
+        }
+    }
+  
     resizeCanvasListener = () => {
         if (!activeCanvas || !video) return;
         activeCanvas.width = video.offsetWidth;
@@ -367,9 +337,9 @@ async function applyEffects(seedToken) {
         activeGl.bindBuffer(activeGl.ARRAY_BUFFER, buf);
         activeGl.bufferData(activeGl.ARRAY_BUFFER, quadVerts, activeGl.STATIC_DRAW);
         activeGl.enableVertexAttribArray(posLoc);
-        activeGl.vertexAttribPointer(posLoc, 2, activeGl.FLOAT, false, 16, 0);
+        activeGl.vertexAttribPointer(posLoc, 2, activeGl.FLOAT, false, 4 * Float32Array.BYTES_PER_ELEMENT, 0);
         activeGl.enableVertexAttribArray(texLoc);
-        activeGl.vertexAttribPointer(texLoc, 2, activeGl.FLOAT, false, 16, 8);
+        activeGl.vertexAttribPointer(texLoc, 2, activeGl.FLOAT, false, 4 * Float32Array.BYTES_PER_ELEMENT, 2 * Float32Array.BYTES_PER_ELEMENT);
 
         const videoTex = activeGl.createTexture();
         activeGl.bindTexture(activeGl.TEXTURE_2D, videoTex);
@@ -378,19 +348,20 @@ async function applyEffects(seedToken) {
         activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_MIN_FILTER, activeGl.NEAREST);
         activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_MAG_FILTER, activeGl.NEAREST);
 
-        const shuffleImage = new Image();
-        shuffleImage.crossOrigin = "anonymous";
-        const actualSeedToken = currentToken;
-        const actualWidthFromPython = 80;
-        const actualHeightFromPython = 80;
+        //const shuffleImage = new Image();
+        //shuffleImage.crossOrigin = "anonymous";
+        let actualSeedToken = currentToken;
+        let actualWidthFromPython = 80;
+        let actualHeightFromPython = 80;
+        let unshuffleMapFloats = null;
 
         try {
-            const base64UnshuffleMap = generateUnshuffleOffsetMapDataURLFromSeed(
+            unshuffleMapFloats = _generateUnshuffleOffsetMapFloat32Array(
                 actualSeedToken,
                 actualWidthFromPython,
                 actualHeightFromPython
             );
-            shuffleImage.src = base64UnshuffleMap;
+            //shuffleImage.src = base64UnshuffleMap;
         } catch (error) {
             console.error("Error generating unshuffle offset map (from seed):", error);
             removeEffects();
@@ -398,28 +369,76 @@ async function applyEffects(seedToken) {
         }
 
         const shuffleTex = activeGl.createTexture();
-        shuffleImage.onload = () => {
-             if (!activeGl) return;
-            activeGl.activeTexture(activeGl.TEXTURE1);
-            activeGl.bindTexture(activeGl.TEXTURE_2D, shuffleTex);
-            activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_WRAP_S, activeGl.CLAMP_TO_EDGE);
-            activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_WRAP_T, activeGl.CLAMP_TO_EDGE);
-            activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_MIN_FILTER, activeGl.NEAREST);
-            activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_MAG_FILTER, activeGl.NEAREST);
+
+        activeGl.activeTexture(activeGl.TEXTURE1);
+        activeGl.bindTexture(activeGl.TEXTURE_2D, shuffleTex);
+
+        activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_WRAP_S, activeGl.CLAMP_TO_EDGE);
+        activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_WRAP_T, activeGl.CLAMP_TO_EDGE);
+        activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_MIN_FILTER, activeGl.NEAREST);
+        activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_MAG_FILTER, activeGl.NEAREST);
+
+        if (activeGl instanceof WebGL2RenderingContext) {
+            activeGl.texImage2D(
+                activeGl.TEXTURE_2D,
+                0,
+                activeGl.RG32F,
+                actualWidthFromPython,
+                actualHeightFromPython,
+                0,
+                activeGl.RG,
+                activeGl.FLOAT,
+                unshuffleMapFloats
+            );
+            console.log("Uploaded shuffle map as RG32F texture (WebGL2)");
+        } else if (oesTextureFloatExt) {
+            const paddedData = new Float32Array(actualWidthFromPython * actualHeightFromPython * 4);
+            for (let i = 0; i < unshuffleMapFloats.length / 2; i++) {
+                paddedData[i * 4 + 0] = unshuffleMapFloats[i * 2 + 0];
+                paddedData[i * 4 + 1] = unshuffleMapFloats[i * 2 + 1];
+                paddedData[i * 4 + 2] = 0.0;
+                paddedData[i * 4 + 3] = 1.0;
+            }
+
             activeGl.texImage2D(
                 activeGl.TEXTURE_2D,
                 0,
                 activeGl.RGBA,
+                actualWidthFromPython,
+                actualHeightFromPython,
+                0,
                 activeGl.RGBA,
-                activeGl.UNSIGNED_BYTE,
-                shuffleImage
+                activeGl.FLOAT,
+                paddedData
             );
-             console.log("Shuffle texture loaded.");
-        };
-        shuffleImage.onerror = (e) => {
-             console.error("Error loading shuffle image:", e);
-             removeEffects();
+            console.log("Uploaded shuffle map as RGBA float texture (WebGL1)");
+        } else {
+            console.error("Float textures not supported by this browser's WebGL1 context.");
+            return;
         }
+
+        //shuffleImage.onload = () => {
+        //     if (!activeGl) return;
+        //    activeGl.activeTexture(activeGl.TEXTURE1);
+        //    activeGl.bindTexture(activeGl.TEXTURE_2D, shuffleTex);
+        //    activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_WRAP_S, activeGl.CLAMP_TO_EDGE);
+        //    activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_WRAP_T, activeGl.CLAMP_TO_EDGE);
+        //    activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_MIN_FILTER, activeGl.NEAREST);
+        //    activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_MAG_FILTER, activeGl.NEAREST);
+        //    activeGl.texImage2D(
+        //        activeGl.TEXTURE_2D,
+        //        0,
+        //        activeGl.RGBA,
+        //        activeGl.RGBA,
+        //        activeGl.UNSIGNED_BYTE,
+        //        shuffleImage
+        //    );
+        //     console.log("Shuffle texture loaded.");
+        //};
+        //shuffleImage.onerror = (e) => {
+        //     console.error("Error loading shuffle image:", e);
+        //     removeEffects();
+        //}
 
         activeGl.clearColor(0.0, 0.0, 0.0, 1.0);
 
@@ -480,10 +499,12 @@ async function applyEffects(seedToken) {
             );
 
             const filterFrequencies = [
-                500, 450, 550, 6500, 6600, 6650, 10500, 10600, 10700,
+                6600, 15600, 5000, 6000, 6300, 8000, 10000, 12500, 14000, 15000, 15900, 16000
             ];
-            const filterEq = [1, 1, 1, 5, 5, 5, 5, 5, 5];
-            const filterCut = [-180, -180, -180, -180, -180, -180, -180, -180, -180];
+
+            const filterEq = [ 1, 1, 15, 20, 20, 20, 40, 40, 40, 40, 40, 40];
+            const filterCut = [0,0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+
             const numFilters = filterFrequencies.length;
 
             activeNotchFilters = [];
@@ -491,7 +512,7 @@ async function applyEffects(seedToken) {
                 const filter = activeAudioCtx.createBiquadFilter();
                 filter.type = "notch";
                 filter.frequency.value = filterFrequencies[i];
-                filter.Q.value = filterEq[i];
+                filter.Q.value = filterEq[i]*3;
                 filter.gain.value = filterCut[i];
                 activeNotchFilters.push(filter);
                 console.log(
