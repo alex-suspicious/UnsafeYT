@@ -499,11 +499,11 @@ async function applyEffects(seedToken) {
             );
 
             const filterFrequencies = [
-                6600, 15600, 5000, 6000, 6300, 8000, 10000, 12500, 14000, 15000, 15900, 16000
+                200, 440, 6600, 15600, 5000, 6000, 6300, 8000, 10000, 12500, 14000, 15000, 15500, 15900, 16000
             ];
 
-            const filterEq = [ 1, 1, 15, 20, 20, 20, 40, 40, 40, 40, 40, 40];
-            const filterCut = [0,0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+            const filterEq = [3, 2, 1, 1, 20, 20, 5, 40, 40, 40, 40, 40, 1, 1, 40];
+            const filterCut = [1, 1, 0,0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1];
 
             const numFilters = filterFrequencies.length;
 
@@ -512,7 +512,7 @@ async function applyEffects(seedToken) {
                 const filter = activeAudioCtx.createBiquadFilter();
                 filter.type = "notch";
                 filter.frequency.value = filterFrequencies[i];
-                filter.Q.value = filterEq[i]*3;
+                filter.Q.value = filterEq[i]*3.5;
                 filter.gain.value = filterCut[i];
                 activeNotchFilters.push(filter);
                 console.log(
