@@ -18,5 +18,10 @@
   "action": {
     "default_popup": "index.html"
   },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "alex.suspicious@gmail.com"
+    }
+  },
   "permissions": ["activeTab"]
 }
