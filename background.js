@@ -10,6 +10,9 @@ let renderFrameId = null;
 let isRendering = false;
 let originalVideoContainerStyle = null;
 let resizeCanvasListener = null;
+let currentNode = null;
+let currentUrl = window.location.href;
+let currentToken = "";
 
 function deterministicHash(s, prime = 31, modulus = Math.pow(2, 32)) {
     let h = 0;
@@ -89,6 +92,7 @@ function removeEffects() {
         cancelAnimationFrame(renderFrameId);
         renderFrameId = null;
     }
+
     isRendering = false;
 
     if (resizeCanvasListener) {
@@ -113,36 +117,40 @@ function removeEffects() {
     if (activeAudioCtx) {
         const video = document.querySelector(".video-stream");
         if (video && activeSrcNode) {
-             try {
-                 activeSrcNode.disconnect();
-                 activeSrcNode.connect(activeAudioCtx.destination);
-                 console.log("Reconnected video source directly to audio destination.");
-             } catch (e) {
-                 console.warn("Failed to disconnect/reconnect audio source:", e);
-             }
+            activeSrcNode.disconnect();
+            activeSrcNode = null;
         }
 
-        if (activeGainNode) activeGainNode.disconnect();
-        activeNotchFilters.forEach(filter => filter.disconnect());
-        if (activeOutputGainNode) activeOutputGainNode.disconnect();
-
-        activeSrcNode = null;
-        activeGainNode = null;
-        activeNotchFilters = [];
-        activeOutputGainNode = null;
-
-        activeAudioCtx.close().then(() => {
-            console.log("AudioContext closed");
-            activeAudioCtx = null;
-        }).catch(e => {
-            console.error("Error closing AudioContext:", e);
-            activeAudioCtx = null;
+        if (activeGainNode) {
+            activeGainNode.disconnect();
+            activeGainNode = null;
+        }
+        activeNotchFilters.forEach(filter => {
+            filter.disconnect();
         });
+        activeNotchFilters = [];
+        if (activeOutputGainNode) {
+            activeOutputGainNode.disconnect();
+            activeOutputGainNode = null;
+        }
+        
+        activeAudioCtx.close().then(() => {
+            console.log("AudioContext closed.");
+            activeAudioCtx = null;
+            if (video) {
+                const currentSrc = video.src;
+                video.src = '';
+                video.load();
+                video.src = currentSrc;
+                video.load();
+                console.log("Video source reloaded to restore audio.");
+            }
+        }).catch(e => console.error("Error closing AudioContext:", e));
+        currentNode = null;
     }
     console.log("Removed applied effects.");
 }
 
-let currentToken = "";
 
 function getToken() {
     const element = document.getElementsByClassName("yt-core-attributed-string--link-inherit-color")[0];
@@ -161,6 +169,9 @@ function getToken() {
 }
 
 async function applyEffects(seedToken) {
+    if( isRendering )
+        return;
+
     removeEffects();
     currentToken = seedToken;
 
@@ -189,6 +200,7 @@ async function applyEffects(seedToken) {
         transform: "translateY(-50%) translateX(-50%)",
         pointerEvents: "none",
         zIndex: 9999,
+        "touch-action": "none"
     });
 
     if (html5_video_container && !originalVideoContainerStyle) {
@@ -255,8 +267,7 @@ async function applyEffects(seedToken) {
         error = activeGl.getError();
         if (error !== activeGl.NO_ERROR) {
             console.error("GL error after compileShader:", error);
-             // Get info log only if compilation failed
-            if (!activeGl.getShaderParameter(shader, activeGl.COMPILE_STATUS)) {
+             if (!activeGl.getShaderParameter(shader, activeGl.COMPILE_STATUS)) {
                 console.error("Shader info log:", activeGl.getShaderInfoLog(shader));
             }
             activeGl.deleteShader(shader);
@@ -344,12 +355,10 @@ async function applyEffects(seedToken) {
         const videoTex = activeGl.createTexture();
         activeGl.bindTexture(activeGl.TEXTURE_2D, videoTex);
         activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_WRAP_S, activeGl.CLAMP_TO_EDGE);
-        activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_WRAP_T, activeGl.CLAMP_TO_EDGE);
+        activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_T, activeGl.CLAMP_TO_EDGE);
         activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_MIN_FILTER, activeGl.NEAREST);
         activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_MAG_FILTER, activeGl.NEAREST);
 
-        //const shuffleImage = new Image();
-        //shuffleImage.crossOrigin = "anonymous";
         let actualSeedToken = currentToken;
         let actualWidthFromPython = 80;
         let actualHeightFromPython = 80;
@@ -361,7 +370,6 @@ async function applyEffects(seedToken) {
                 actualWidthFromPython,
                 actualHeightFromPython
             );
-            //shuffleImage.src = base64UnshuffleMap;
         } catch (error) {
             console.error("Error generating unshuffle offset map (from seed):", error);
             removeEffects();
@@ -417,29 +425,6 @@ async function applyEffects(seedToken) {
             return;
         }
 
-        //shuffleImage.onload = () => {
-        //     if (!activeGl) return;
-        //    activeGl.activeTexture(activeGl.TEXTURE1);
-        //    activeGl.bindTexture(activeGl.TEXTURE_2D, shuffleTex);
-        //    activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_WRAP_S, activeGl.CLAMP_TO_EDGE);
-        //    activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_WRAP_T, activeGl.CLAMP_TO_EDGE);
-        //    activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_MIN_FILTER, activeGl.NEAREST);
-        //    activeGl.texParameteri(activeGl.TEXTURE_2D, activeGl.TEXTURE_MAG_FILTER, activeGl.NEAREST);
-        //    activeGl.texImage2D(
-        //        activeGl.TEXTURE_2D,
-        //        0,
-        //        activeGl.RGBA,
-        //        activeGl.RGBA,
-        //        activeGl.UNSIGNED_BYTE,
-        //        shuffleImage
-        //    );
-        //     console.log("Shuffle texture loaded.");
-        //};
-        //shuffleImage.onerror = (e) => {
-        //     console.error("Error loading shuffle image:", e);
-        //     removeEffects();
-        //}
-
         activeGl.clearColor(0.0, 0.0, 0.0, 1.0);
 
         isRendering = true;
@@ -487,10 +472,8 @@ async function applyEffects(seedToken) {
         const video = document.querySelector(".video-stream");
         if (video) {
             activeSrcNode = activeAudioCtx.createMediaElementSource(video);
-            activeGainNode = activeAudioCtx.createGain();
+            
             activeOutputGainNode = activeAudioCtx.createGain();
-
-            activeGainNode.gain.value = 1.0;
 
             const defaultOutputGain = 100.0;
             activeOutputGainNode.gain.value = defaultOutputGain;
@@ -508,6 +491,7 @@ async function applyEffects(seedToken) {
             const numFilters = filterFrequencies.length;
 
             activeNotchFilters = [];
+
             for (let i = 0; i < numFilters; i++) {
                 const filter = activeAudioCtx.createBiquadFilter();
                 filter.type = "notch";
@@ -522,8 +506,12 @@ async function applyEffects(seedToken) {
                 );
             }
 
-            let currentNode = activeSrcNode;
+            currentNode = activeSrcNode;
+
+            activeGainNode = activeAudioCtx.createGain();
+            activeGainNode.gain.value = 1.0;
             currentNode = currentNode.connect(activeGainNode);
+            
 
             if (activeNotchFilters.length > 0) {
                 currentNode = currentNode.connect(activeNotchFilters[0]);
@@ -571,23 +559,29 @@ async function initializeScript() {
     console.log(`Initial token found: "${initialToken}"`);
     await applyEffects(initialToken);
 
-    const observer = new MutationObserver((mutationsList) => {
-        for (const mutation of mutationsList) {
-            if (mutation.type === 'childList') {
-                for (const node of mutation.addedNodes) {
-                    if (node.nodeType === 1) {
-                         if (node.matches('.ytd-watch-metadata')) {
-                             console.log('Detected .ytd-watch-metadata added.');
-                             const newToken = getToken();
-                             console.log(`New token found after update: "${newToken}"`);
-                             applyEffects(newToken);
-                         }
-                         if (node.querySelector('.ytd-watch-metadata')) {
-                             console.log('Detected .ytd-watch-metadata in added subtree.');
-                             const newToken = getToken();
-                             console.log(`New token found after update: "${newToken}"`);
-                             applyEffects(newToken);
-                         }
+    const observer = new MutationObserver(async (mutationsList) => {
+        await new Promise(r => setTimeout(r, 50));
+        let newUrl = window.location.href;
+        
+        if( currentUrl != newUrl  ){
+            currentUrl = newUrl;
+            currentToken = "";
+            await new Promise(r => setTimeout(r, 50));
+            removeEffects();
+            await new Promise(r => setTimeout(r, 100));
+            removeEffects();
+            await new Promise(r => setTimeout(r, 1000));
+            removeEffects();
+            
+            for (let mutation of mutationsList) {
+                if (mutation.type === 'childList') {
+                    console.log('Detected .ytd-watch-metadata in added subtree.');
+                    await new Promise(r => setTimeout(r, 2000));
+
+                    const newToken = getToken();
+                    if( newToken != "" && !isRendering ){
+                        console.log(`New token found after update: "${newToken}"`);
+                        applyEffects(newToken);
                     }
                 }
             }
@@ -602,4 +596,5 @@ async function initializeScript() {
     console.log("MutationObserver started.");
 }
 
+console.log("Trying to initialize");
 initializeScript();

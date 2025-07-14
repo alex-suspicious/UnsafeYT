@@ -5,7 +5,7 @@
   "description": "Decrypt unsafe videos",
   "content_scripts": [
     {
-      "matches": ["https://www.youtube.com/*", "http://0.0.0.0:2000/*", "http://localhost:2000/*"],
+      "matches": ["https://www.youtube.com/*", "https://m.youtube.com/*", "http://0.0.0.0:2000/*", "http://localhost:2000/*"],
       "js": ["jquery.js", "background.js"]
     }
   ],
