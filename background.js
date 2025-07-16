@@ -472,17 +472,14 @@ async function applyEffects(seedToken) {
         if (video) {
             activeSrcNode = activeAudioCtx.createMediaElementSource(video);
             
-            // Create a ChannelSplitterNode to separate channels
-            const splitter = activeAudioCtx.createChannelSplitter(2); // 2 for stereo
+            const splitter = activeAudioCtx.createChannelSplitter(2);
 
-            // Create a GainNode for each channel to mix them
             const leftGain = activeAudioCtx.createGain();
             const rightGain = activeAudioCtx.createGain();
-            leftGain.gain.value = 0.5; // Half volume for each to sum to original
+            leftGain.gain.value = 0.5;
             rightGain.gain.value = 0.5;
 
-            // Create a ChannelMergerNode to merge back to mono
-            const merger = activeAudioCtx.createChannelMerger(1); // 1 for mono
+            const merger = activeAudioCtx.createChannelMerger(1);
 
             activeOutputGainNode = activeAudioCtx.createGain();
 
@@ -517,19 +514,17 @@ async function applyEffects(seedToken) {
                 );
             }
 
-            // Connect the source to the splitter
             activeSrcNode.connect(splitter);
             console.log("Source connected to ChannelSplitterNode.");
 
-            // Connect each channel to its gain node and then to the merger
-            splitter.connect(leftGain, 0); // Connect left channel (output 0)
-            splitter.connect(rightGain, 1); // Connect right channel (output 1)
+            splitter.connect(leftGain, 0);
+            splitter.connect(rightGain, 1);
 
-            leftGain.connect(merger, 0, 0); // Connect left gain to the first input of merger
-            rightGain.connect(merger, 0, 0); // Connect right gain to the first input of merger (merging to mono)
+            leftGain.connect(merger, 0, 0);
+            rightGain.connect(merger, 0, 0);
             console.log("Channels split, gained, and merged to mono.");
 
-            currentNode = merger; // Start the processing from the mono merged signal
+            currentNode = merger;
 
             activeGainNode = activeAudioCtx.createGain();
             activeGainNode.gain.value = 1.0;
