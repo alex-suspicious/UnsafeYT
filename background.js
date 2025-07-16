@@ -461,7 +461,6 @@ async function applyEffects(seedToken) {
         removeEffects();
         return;
     }
-
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) {
          console.error("AudioContext not supported");
@@ -473,6 +472,18 @@ async function applyEffects(seedToken) {
         if (video) {
             activeSrcNode = activeAudioCtx.createMediaElementSource(video);
             
+            // Create a ChannelSplitterNode to separate channels
+            const splitter = activeAudioCtx.createChannelSplitter(2); // 2 for stereo
+
+            // Create a GainNode for each channel to mix them
+            const leftGain = activeAudioCtx.createGain();
+            const rightGain = activeAudioCtx.createGain();
+            leftGain.gain.value = 0.5; // Half volume for each to sum to original
+            rightGain.gain.value = 0.5;
+
+            // Create a ChannelMergerNode to merge back to mono
+            const merger = activeAudioCtx.createChannelMerger(1); // 1 for mono
+
             activeOutputGainNode = activeAudioCtx.createGain();
 
             const defaultOutputGain = 100.0;
@@ -506,7 +517,19 @@ async function applyEffects(seedToken) {
                 );
             }
 
-            currentNode = activeSrcNode;
+            // Connect the source to the splitter
+            activeSrcNode.connect(splitter);
+            console.log("Source connected to ChannelSplitterNode.");
+
+            // Connect each channel to its gain node and then to the merger
+            splitter.connect(leftGain, 0); // Connect left channel (output 0)
+            splitter.connect(rightGain, 1); // Connect right channel (output 1)
+
+            leftGain.connect(merger, 0, 0); // Connect left gain to the first input of merger
+            rightGain.connect(merger, 0, 0); // Connect right gain to the first input of merger (merging to mono)
+            console.log("Channels split, gained, and merged to mono.");
+
+            currentNode = merger; // Start the processing from the mono merged signal
 
             activeGainNode = activeAudioCtx.createGain();
             activeGainNode.gain.value = 1.0;
@@ -551,6 +574,7 @@ async function applyEffects(seedToken) {
         }
         console.log("Audio effects initialized.");
     }
+
 }
 
 async function initializeScript() {
