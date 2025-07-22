@@ -618,8 +618,10 @@ async function urlChanged() {
 }
 
 setInterval(async () => {
-    if (location.href !== currentUrl) {
-        currentUrl = location.href;
+    var toCheck = location.href.split("&")[0].split("#")[0];
+
+    if (toCheck !== currentUrl) {
+        currentUrl = toCheck;
         await urlChanged();
     }
 }, 500);
