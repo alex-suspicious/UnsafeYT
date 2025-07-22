@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "version": "1.0.4",
+  "name": "UnsafeYT",
+  "description": "Decrypt unsafe videos",
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*", "https://m.youtube.com/*", "http://0.0.0.0:2000/*", "http://localhost:2000/*"],
+      "js": ["jquery.js", "background.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["shaders/screen.frag", "shaders/screen.vrt"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "action": {
+    "default_popup": "index.html"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "alex.suspicious@gmail.com"
+    }
+  },
+  "permissions": ["activeTab"]
+}
