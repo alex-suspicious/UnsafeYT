@@ -13,6 +13,7 @@ let resizeCanvasListener = null;
 let currentNode = null;
 let currentUrl = window.location.href;
 let currentToken = "";
+let savedDescription = "";
 
 function deterministicHash(s, prime = 31, modulus = Math.pow(2, 32)) {
     let h = 0;
@@ -80,6 +81,12 @@ function _generateUnshuffleOffsetMapFloat32Array(seedToken, width, height) {
 }
 
 function removeEffects() {
+    if( !isRendering )
+        return;
+
+    isRendering = false;
+    currentToken = "";
+
     if (activeCanvas) {
         activeCanvas.remove();
         activeCanvas = null;
@@ -93,7 +100,6 @@ function removeEffects() {
         renderFrameId = null;
     }
 
-    isRendering = false;
 
     if (resizeCanvasListener) {
         window.removeEventListener("resize", resizeCanvasListener);
@@ -152,19 +158,34 @@ function removeEffects() {
 }
 
 
-function getToken() {
-    const element = document.getElementsByClassName("yt-core-attributed-string--link-inherit-color")[0];
-    if (!element || !element.textContent) {
+async function getToken( steps ) {
+    await new Promise(r => setTimeout(r, 200));
+    let description = $(".yt-core-attributed-string--link-inherit-color")[0];
+    //console.log(savedDescription);
+
+    if( typeof description != 'undefined' && description.innerHTML.includes("token:") && savedDescription != description.innerHTML ){
+        let parts = description.innerHTML.split("token:");
+        if (parts.length > 1) {
+            parts = parts[1].split("\n");
+            if (parts.length > 0 && currentToken != parts[0].trim()) {
+                savedDescription = description.innerHTML;
+                return parts[0].trim();
+            }
+        }
+
+        return await getToken( steps-1 );
+    }
+
+    if( typeof description != 'undefined' && savedDescription != description.innerHTML && description.innerHTML.length > 5 && !description.innerHTML.includes("token:") ){
+        savedDescription = description.innerHTML;
         return "";
     }
-    let text = element.textContent;
-    let parts = text.split("token:");
-    if (parts.length > 1) {
-        parts = parts[1].split("\n");
-        if (parts.length > 0) {
-            return parts[0].trim();
-        }
-    }
+
+    if( steps > 0 )
+        return await getToken( steps-1 );
+    
+    savedDescription = description.innerHTML;
+    currentToken = "";
     return "";
 }
 
@@ -282,7 +303,7 @@ async function applyEffects(seedToken) {
             return null;
         }
 
-        console.log(`Shader compiled successfully (Type: ${type === activeGl.VERTEX_SHADER ? 'VERTEX' : 'FRAGMENT'})`);
+        //console.log(`Shader compiled successfully (Type: ${type === activeGl.VERTEX_SHADER ? 'VERTEX' : 'FRAGMENT'})`);
         return shader;
     };
 
@@ -312,7 +333,7 @@ async function applyEffects(seedToken) {
         }
 
         activeGl.useProgram(program);
-        console.log("WebGL program created and linked successfully.");
+        //console.log("WebGL program created and linked successfully.");
 
         activeGl.deleteShader(vs);
         activeGl.deleteShader(fs);
@@ -398,7 +419,7 @@ async function applyEffects(seedToken) {
                 activeGl.FLOAT,
                 unshuffleMapFloats
             );
-            console.log("Uploaded shuffle map as RG32F texture (WebGL2)");
+            //console.log("Uploaded shuffle map as RG32F texture (WebGL2)");
         } else if (oesTextureFloatExt) {
             const paddedData = new Float32Array(actualWidthFromPython * actualHeightFromPython * 4);
             for (let i = 0; i < unshuffleMapFloats.length / 2; i++) {
@@ -419,7 +440,7 @@ async function applyEffects(seedToken) {
                 activeGl.FLOAT,
                 paddedData
             );
-            console.log("Uploaded shuffle map as RGBA float texture (WebGL1)");
+            //console.log("Uploaded shuffle map as RGBA float texture (WebGL1)");
         } else {
             console.error("Float textures not supported by this browser's WebGL1 context.");
             return;
@@ -454,7 +475,7 @@ async function applyEffects(seedToken) {
             renderFrameId = requestAnimationFrame(render);
         };
         render();
-        console.log("Video effects initialized with shuffle texture.");
+        //console.log("Video effects initialized with shuffle texture.");
 
     } catch (error) {
         console.error("Error during video effects setup:", error);
@@ -466,7 +487,7 @@ async function applyEffects(seedToken) {
          console.error("AudioContext not supported");
     } else {
         activeAudioCtx = new AudioCtx();
-        console.log("AudioContext created");
+        //console.log("AudioContext created");
 
         const video = document.querySelector(".video-stream");
         if (video) {
@@ -485,9 +506,9 @@ async function applyEffects(seedToken) {
 
             const defaultOutputGain = 100.0;
             activeOutputGainNode.gain.value = defaultOutputGain;
-            console.log(
-                `Output GainNode created with initial gain: ${defaultOutputGain}`
-            );
+            //console.log(
+            //    `Output GainNode created with initial gain: ${defaultOutputGain}`
+            //);
 
             const filterFrequencies = [
                 200, 440, 6600, 15600, 5000, 6000, 6300, 8000, 10000, 12500, 14000, 15000, 15500, 15900, 16000
@@ -507,22 +528,22 @@ async function applyEffects(seedToken) {
                 filter.Q.value = filterEq[i]*3.5;
                 filter.gain.value = filterCut[i];
                 activeNotchFilters.push(filter);
-                console.log(
-                    `Created BiquadFilterNode ${i + 1} (notch) at ${
-                    filterFrequencies[i]
-                    } Hz with Q=${filterEq[i]} and Gain=${filterCut[i]}dB`
-                );
+                //console.log(
+                //    `Created BiquadFilterNode ${i + 1} (notch) at ${
+                //    filterFrequencies[i]
+                //    } Hz with Q=${filterEq[i]} and Gain=${filterCut[i]}dB`
+                //);
             }
 
             activeSrcNode.connect(splitter);
-            console.log("Source connected to ChannelSplitterNode.");
+            //console.log("Source connected to ChannelSplitterNode.");
 
             splitter.connect(leftGain, 0);
             splitter.connect(rightGain, 1);
 
             leftGain.connect(merger, 0, 0);
             rightGain.connect(merger, 0, 0);
-            console.log("Channels split, gained, and merged to mono.");
+            //nsole.log("Channels split, gained, and merged to mono.");
 
             currentNode = merger;
 
@@ -543,7 +564,7 @@ async function applyEffects(seedToken) {
             }
 
             activeOutputGainNode.connect(activeAudioCtx.destination);
-            console.log("Audio graph connected.");
+            //console.log("Audio graph connected.");
 
             const handleAudioState = async () => {
                  if (!activeAudioCtx || activeAudioCtx.state === 'closed') return;
@@ -567,53 +588,40 @@ async function applyEffects(seedToken) {
         } else {
              console.error("Video element not found for audio effects.");
         }
-        console.log("Audio effects initialized.");
+        //console.log("Audio effects initialized.");
     }
 
 }
 
 async function initializeScript() {
-    await new Promise(r => setTimeout(r, 2000));
-    let initialToken = getToken();
+    //await new Promise(r => setTimeout(r, 1000));
+    removeEffects();
+
+    //let ytDesc = await getYtDescription(50);
+    let initialToken = await getToken(20);
+
+    console.log("TOKEN: " + initialToken);
+
+    if( initialToken == "" )
+        return;
+
     console.log(`Initial token found: "${initialToken}"`);
     await applyEffects(initialToken);
-
-    const observer = new MutationObserver(async (mutationsList) => {
-        await new Promise(r => setTimeout(r, 50));
-        let newUrl = window.location.href;
-        
-        if( currentUrl != newUrl  ){
-            currentUrl = newUrl;
-            currentToken = "";
-            await new Promise(r => setTimeout(r, 50));
-            removeEffects();
-            await new Promise(r => setTimeout(r, 100));
-            removeEffects();
-            await new Promise(r => setTimeout(r, 1000));
-            removeEffects();
-            
-            for (let mutation of mutationsList) {
-                if (mutation.type === 'childList') {
-                    console.log('Detected .ytd-watch-metadata in added subtree.');
-                    await new Promise(r => setTimeout(r, 2000));
-
-                    const newToken = getToken();
-                    if( newToken != "" && !isRendering ){
-                        console.log(`New token found after update: "${newToken}"`);
-                        applyEffects(newToken);
-                    }
-                }
-            }
-        }
-    });
-
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-
-    console.log("MutationObserver started.");
 }
 
 console.log("Trying to initialize");
+
+async function urlChanged() {
+    console.log('URL change detected!');
+
+    await initializeScript();
+}
+
+setInterval(async () => {
+    if (location.href !== currentUrl) {
+        currentUrl = location.href;
+        await urlChanged();
+    }
+}, 500);
+
 initializeScript();
