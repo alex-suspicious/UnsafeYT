@@ -214,15 +214,28 @@ async function applyEffects(seedToken) {
 
     activeCanvas = document.createElement("canvas");
     activeCanvas.id = "glcanvas";
-    Object.assign(activeCanvas.style, {
-        position: "absolute",
-        top: "50%",
-        left: "50%",
-        transform: "translateY(-50%) translateX(-50%)",
-        pointerEvents: "none",
-        zIndex: 9999,
-        "touch-action": "none"
-    });
+
+    if( location.href.includes("m.youtube") ){
+        Object.assign(activeCanvas.style, {
+            position: "absolute",
+            top: "0%",
+            left: "50%",
+            transform: "translateY(0%) translateX(-50%)",
+            pointerEvents: "none",
+            zIndex: 9999,
+            "touch-action": "none"
+        });
+    }else{
+        Object.assign(activeCanvas.style, {
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translateY(-50%) translateX(-50%)",
+            pointerEvents: "none",
+            zIndex: 9999,
+            "touch-action": "none"
+        });
+    }
 
     if (html5_video_container && !originalVideoContainerStyle) {
         originalVideoContainerStyle = {
@@ -600,14 +613,35 @@ async function initializeScript() {
     //let ytDesc = await getYtDescription(50);
     let initialToken = await getToken(20);
 
-    console.log("TOKEN: " + initialToken);
+    //console.log("TOKEN: " + initialToken);
 
     if( initialToken == "" )
         return;
 
     console.log(`Initial token found: "${initialToken}"`);
-    await applyEffects(initialToken);
+
+    let video = document.getElementsByClassName("video-stream")[0];
+    if( !video.paused ){
+        video.hooked = true;
+        await applyEffects(initialToken);
+        return;
+    }
+
+    currentToken = initialToken;
 }
+
+// Function to check if video is playing
+setInterval(async () => {
+    let video = document.getElementsByClassName("video-stream")[0];
+
+    if (!video.paused && video.hooked == null && !isRendering ) {
+        video.hooked = true;
+        console.log("Video is playing, applying effects...");
+        await applyEffects(currentToken);
+    }
+}, 500);
+
+
 
 console.log("Trying to initialize");
 
@@ -617,6 +651,7 @@ async function urlChanged() {
     await initializeScript();
 }
 
+currentUrl = location.href.split("&")[0].split("#")[0];
 setInterval(async () => {
     var toCheck = location.href.split("&")[0].split("#")[0];
 
