@@ -22,6 +22,5 @@
     "gecko": {
       "id": "alex.suspicious@gmail.com"
     }
-  },
-  "permissions": ["activeTab"]
+  }
 }
