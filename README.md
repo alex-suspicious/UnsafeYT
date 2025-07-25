@@ -4,6 +4,7 @@
 This browser extension lets you watch YouTube videos that were *visually encrypted* using a shader offset. It’s not practical. It’s not secure. It’s just... cursed and cool.
 
 👉 [**Install on Firefox**](https://addons.mozilla.org/en-US/firefox/addon/unsafeyt/)  
+👉 [**Install on Chrome**](https://chromewebstore.google.com/detail/unsafeyt/olehlaillpnmacogdkppenbfjnhbfooe)  
 
 ---
 
