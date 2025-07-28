@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "version": "1.0.5",
+  "version": "1.0.5.5",
   "name": "UnsafeYT",
   "icons": {
     "128": "textures/icon.png"
