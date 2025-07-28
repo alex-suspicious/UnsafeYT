@@ -667,45 +667,54 @@ setInterval(async () => {
 
 initializeScript();
 
-chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+var browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+
+browserAPI.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     if (request.name === "setTokenGui") {
         sendResponse({ token: currentToken, isRendering: isRendering });
+        return;
     }
 
     if (request.name === "turnOn") {
-        if (request.token && request.token.length > 0) {
-            currentToken = request.token;
-        }
-        if (currentToken && currentToken.length > 0) {
-            await applyEffects(currentToken);
-        } else {
-            console.warn("No valid token provided. Effects will not be applied.");
-        }
-
-        sendResponse({ token: currentToken, isRendering: true });
+        (async () => {
+            if (request.token && request.token.length > 0) {
+                currentToken = request.token;
+            }
+            if (currentToken && currentToken.length > 0) {
+                await applyEffects(currentToken);
+            } else {
+                console.warn("No valid token provided. Effects will not be applied.");
+            }
+            sendResponse({ token: currentToken, isRendering: true });
+        })();
+        return true;
     }
     
     if (request.name === "turnOff") {
         removeEffects();
         sendResponse({ token: currentToken, isRendering: false });
+        return;
     }
 
     if (request.name === "reloadToken") {
-        removeEffects();
+        (async () => {
+            removeEffects();
 
-        if (request.token && request.token.length > 0) {
-            currentToken = request.token;
-        }
-        
-        sendResponse({ token: currentToken, isRendering: isRendering });
-
-        await new Promise(r => setTimeout(r, 200));
-        await applyEffects(currentToken);
+            if (request.token && request.token.length > 0) {
+                currentToken = request.token;
+            }
+            
+            await new Promise(r => setTimeout(r, 200));
+            await applyEffects(currentToken);
+            
+            sendResponse({ token: currentToken, isRendering: isRendering });
+        })();
+        return true;
     }
 
     if (request.name === "isYoutube") {
         sendResponse({ bool: true });
+        return;
     }
-    
 });
