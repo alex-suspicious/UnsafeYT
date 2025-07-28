@@ -160,7 +160,7 @@ function removeEffects() {
 
 async function getToken( steps ) {
     await new Promise(r => setTimeout(r, 200));
-    let description = $(".yt-core-attributed-string--link-inherit-color")[0];
+    let description = document.getElementsByClassName("yt-core-attributed-string--link-inherit-color")[0];
     //console.log(savedDescription);
 
     if( typeof description != 'undefined' && description.innerHTML.includes("token:") && savedDescription != description.innerHTML ){
@@ -201,6 +201,7 @@ async function applyEffects(seedToken) {
         return;
     }
     console.log(`Applying effects with token: "${currentToken}"`);
+
 
     const video = document.getElementsByClassName("video-stream")[0];
     const html5_video_container = document.getElementsByClassName(
@@ -499,12 +500,14 @@ async function applyEffects(seedToken) {
     if (!AudioCtx) {
          console.error("AudioContext not supported");
     } else {
-        activeAudioCtx = new AudioCtx();
+        if( !activeAudioCtx )
+            activeAudioCtx = new AudioCtx();
         //console.log("AudioContext created");
 
         const video = document.querySelector(".video-stream");
         if (video) {
-            activeSrcNode = activeAudioCtx.createMediaElementSource(video);
+            if( !activeSrcNode )
+                activeSrcNode = activeAudioCtx.createMediaElementSource(video);
             
             const splitter = activeAudioCtx.createChannelSplitter(2);
 
@@ -611,7 +614,7 @@ async function initializeScript() {
     removeEffects();
 
     //let ytDesc = await getYtDescription(50);
-    let initialToken = await getToken(20);
+    let initialToken = await getToken(30);
 
     //console.log("TOKEN: " + initialToken);
 
@@ -621,7 +624,7 @@ async function initializeScript() {
     console.log(`Initial token found: "${initialToken}"`);
 
     let video = document.getElementsByClassName("video-stream")[0];
-    if( !video.paused ){
+    if( video && !video.paused ){
         video.hooked = true;
         await applyEffects(initialToken);
         return;
@@ -634,8 +637,9 @@ async function initializeScript() {
 setInterval(async () => {
     let video = document.getElementsByClassName("video-stream")[0];
 
-    if (!video.paused && video.hooked == null && !isRendering ) {
+    if ( typeof video != 'undefined' && !video.paused && video.hooked == null && !isRendering ) {
         video.hooked = true;
+
         console.log("Video is playing, applying effects...");
         await applyEffects(currentToken);
     }
@@ -662,3 +666,46 @@ setInterval(async () => {
 }, 500);
 
 initializeScript();
+
+chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
+
+    if (request.name === "setTokenGui") {
+        sendResponse({ token: currentToken, isRendering: isRendering });
+    }
+
+    if (request.name === "turnOn") {
+        if (request.token && request.token.length > 0) {
+            currentToken = request.token;
+        }
+        if (currentToken && currentToken.length > 0) {
+            await applyEffects(currentToken);
+        } else {
+            console.warn("No valid token provided. Effects will not be applied.");
+        }
+
+        sendResponse({ token: currentToken, isRendering: true });
+    }
+    
+    if (request.name === "turnOff") {
+        removeEffects();
+        sendResponse({ token: currentToken, isRendering: false });
+    }
+
+    if (request.name === "reloadToken") {
+        removeEffects();
+
+        if (request.token && request.token.length > 0) {
+            currentToken = request.token;
+        }
+        
+        sendResponse({ token: currentToken, isRendering: isRendering });
+
+        await new Promise(r => setTimeout(r, 200));
+        await applyEffects(currentToken);
+    }
+
+    if (request.name === "isYoutube") {
+        sendResponse({ bool: true });
+    }
+    
+});

@@ -5,11 +5,61 @@
   <title>
     UnsafeYT
   </title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
   <link href="./index.css" rel="stylesheet" type="text/css">
 </head>
-<body>
-  <img width="350px" src="textures/logo.png">
-  <!--<button type="button1" class="button1" id="disableButton">Toggle</button>
-  <script src="toggler.js"></script>-->
+<body data-bs-theme="dark">
+  <div class="border-bottom py-1 px-3 row">
+    <div class="col d-flex align-items-center">
+      <img src="textures/icon.png" height="27px" class="d-inline">
+      <h1 class="d-inline ms-2" style="transform: translateY(4px);">UnsafeYT</h1>
+    </div>
+    <div class="col d-flex align-items-center justify-content-end">
+      <button class="btn btn-sm me-2 m-0" style="text-decoration: underline;" id="toggle-main">Main</button>
+      <button class="btn btn-sm m-0" id="toggle-members">Info</button>
+    </div>
+  </div>
+
+  <h5 id="error-message" class="text-danger px-3 py-3"></h5>
+
+  <div id="main-tab">
+    <div class="py-3 px-3" id="main-content">
+      <div class="input-group input-group-sm mb-3">
+        <span class="input-group-text">Token</span>
+        <input type="text" class="form-control" id="token-input">
+      </div>
+    
+      <div class="row">
+        <div class="col d-flex align-items-center">
+          <button type="button" id="start-stop" class="btn btn-light btn-sm me-2">Start</button>
+          <button type="button" id="reload" class="btn btn-light btn-sm">Reload</button>  
+        </div>
+        <div class="col d-flex align-items-center justify-content-end">
+          <p class="fw-lighter position-absolute" style="right: 1rem; bottom: 0px;">Version: 1.0.5</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="py-3 px-3 position-relative" style="display: none;" id="members-tab">
+    <p class="mb-3">People that supported the project</p>
+    <div class="py-3 px-2" style="max-height: 400px; overflow-y: scroll; background-color: rgba(0, 0, 0, 0.3);">
+      internetlenta<br>
+      Samuel Andres Castellanos Lizarazo
+    </div>
+
+    <div class="mt-3">
+      <a href="#" id="open-patreon">Patreon</a>
+      <a href="#" id="open-github">GitHub</a>
+      <a href="#" id="open-discord">Discord</a>
+      <a href="#" id="open-reddit">Reddit</a>
+      <a href="#" id="open-tool">Tool</a>
+    </div>
+  </div>
+
+  <script src="toggler.js"></script>
+  <script src="tabs.js"></script>
+  <script src="links.js"></script>
+  <script src="error.js"></script>
 </body>
 <html>

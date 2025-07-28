@@ -1,12 +1,15 @@
 {
   "manifest_version": 3,
-  "version": "1.0.4",
+  "version": "1.0.5",
   "name": "UnsafeYT",
-  "description": "Decrypt unsafe videos",
+  "icons": {
+    "128": "textures/icon.png"
+  },
+  "description": "Decode UnsafeYT videos",
   "content_scripts": [
     {
-      "matches": ["https://www.youtube.com/*", "https://m.youtube.com/*", "http://0.0.0.0:2000/*", "http://localhost:2000/*"],
-      "js": ["jquery.js", "background.js"]
+      "matches": ["https://www.youtube.com/*", "https://m.youtube.com/*"],
+      "js": ["background.js"]
     }
   ],
   "web_accessible_resources": [
