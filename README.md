@@ -29,6 +29,14 @@ If you're into code, check out the matching tool used to "encrypt" the videos:
 
 ---
 
+## 💵 Support
+
+If you want to support the project / be on the supporters list in the extension, here is the links.
+
+👉 [**UnsafeYT** on Patreon](https://www.patreon.com/c/mentalgamesofficial)
+
+---
+
 ## ❓Why
 
 Because why not?
