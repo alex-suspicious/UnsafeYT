@@ -33,7 +33,8 @@ If you're into code, check out the matching tool used to "encrypt" the videos:
 
 If you want to support the project / be on the supporters list in the extension, here is the links.
 
-👉 [**UnsafeYT** on Patreon](https://www.patreon.com/c/mentalgamesofficial)
+👉 [**UnsafeYT** on Patreon](https://www.patreon.com/c/mentalgamesofficial)<br>
+👉 [PayPal](https://www.paypal.com/ncp/payment/2LJDGJ39Y4HML)
 
 ---
 
